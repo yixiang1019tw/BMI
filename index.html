@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="BMI、體脂率、基礎代謝與每日熱量估算計算器">
+  <title>BMI・體脂率計算器</title>
+  <style>
+
+    :root {
+      color-scheme: light;
+      --ink: #172033; --muted: #64748b; --line: #dce3ee; --surface: #ffffff; --bg: #f3f6fb;
+      --accent: #315ee8; --accent-dark: #2448bc; --soft: #edf2ff; --good: #147a53; --warn: #9a5b00; --bad: #b42336;
+      --input: #ffffff; --subtle: #f7f9fc; --subtle-line: #e8edf5; --button-muted: #eef2f7; --notice-bg: #fff9e9; --notice-ink: #674a14;
+    }
+    body.dark {
+      color-scheme: dark;
+      --ink: #e7edf7; --muted: #9aa9bd; --line: #2b3950; --surface: #172235; --bg: #0d1522;
+      --accent: #7c9cff; --accent-dark: #9ab2ff; --soft: #1b2b52; --good: #62d6a2; --warn: #f3c76c; --bad: #ff8290;
+      --input: #111b2b; --subtle: #121d2e; --subtle-line: #2a3950; --button-muted: #243249; --notice-bg: #302918; --notice-ink: #f4d896;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; overflow-x: hidden; background: radial-gradient(circle at 15% 0%, color-mix(in srgb, var(--soft) 60%, transparent), transparent 34%), var(--bg); color: var(--ink); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif; line-height: 1.55; transition: background .2s, color .2s; }
+    .wrap { width: min(1120px, calc(100% - 40px)); margin: clamp(20px, 4vw, 42px) auto 60px; }
+    header { margin-bottom: 26px; position: relative; padding: 26px 74px 26px 28px; border: 1px solid var(--line); border-radius: 24px; background: linear-gradient(135deg, var(--surface), var(--soft)); box-shadow: 0 16px 40px #17203312; }
+    h1 { margin: 0 0 8px; color: var(--ink); font-size: clamp(1.7rem, 4vw, 2.25rem); letter-spacing: -.03em; }
+    .intro, .hint { color: var(--muted); } .intro { margin: 0; }
+    .theme-toggle { position: absolute; top: 24px; right: 24px; width: auto; min-height: 40px; padding: 8px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: .82rem; box-shadow: 0 6px 16px #17203318; }
+    .theme-toggle:hover { border-color: var(--accent); transform: translateY(-1px); } .theme-toggle:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 35%, transparent); outline-offset: 2px; }
+    .layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: clamp(14px, 2.4vw, 24px); align-items: start; }
+    #input-card, #result-card, .post-calc { width: 100%; max-width: 100%; }
+    .card { animation: rise-in .45s ease both; }
+    @keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 18px 42px #17203318; transition: transform .2s ease, box-shadow .2s ease; }
+    .result, .analysis-box, .recommend-panel, .plan-day { transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; } .result:hover, .analysis-box:hover, .recommend-panel:hover, .plan-day:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 8px 20px #17203312; }
+    .card { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 24px; box-shadow: 0 12px 32px #17203312; } .card::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--card-accent, var(--accent)); } .layout .card:first-child { --card-accent: #7c9cff; } .layout .card:last-child { --card-accent: #62d6a2; } .macro-card { --card-accent: #f3c76c; } .analysis-card { --card-accent: #d98bff; } .recommend-card { --card-accent: #62d6a2; } .chart-card { --card-accent: #7c9cff; } .history-card { --card-accent: #f3c76c; }
+    h2 { margin: 0 0 18px; font-size: 1.2rem; } .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr)); gap: 14px; width: 100%; } .field { min-width: 0; width: 100%; } .field.full { grid-column: 1 / -1; }
+    label { display: block; margin-bottom: 6px; font-weight: 650; font-size: .92rem; }
+    input, select { display: block; width: 100%; max-width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--input); color: var(--ink); font: inherit; font-size: 1rem; }
+    input:focus, select:focus { outline: 3px solid #315ee82b; border-color: var(--accent); } .unit { color: var(--muted); font-size: .82rem; font-weight: 400; } .hint { margin: 5px 0 0; font-size: .8rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; width: 100%; } button { cursor: pointer; min-height: 46px; border: 0; border-radius: 10px; padding: 10px 18px; font: inherit; font-weight: 700; }
+    .primary { flex: 1; background: var(--accent); color: #fff; } .primary:hover { background: var(--accent-dark); } .secondary { background: var(--button-muted); color: var(--ink); }
+    .result-actions { display: flex; margin-top: 18px; } .again-button { width: 100%; }
+    .error { min-height: 1.4em; margin: 10px 0 0; color: var(--bad); font-size: .9rem; } .results { display: grid; gap: 12px; }
+    .result { padding: 15px 16px; border-radius: 13px; background: var(--subtle); border: 1px solid var(--subtle-line); } .result.primary-result { background: var(--soft); border-color: var(--line); }
+    .bmi-scale { position: relative; height: 10px; margin-top: 14px; border-radius: 999px; background: linear-gradient(90deg, #7c9cff 0 25%, #62d6a2 25% 52%, #f3c76c 52% 68%, #ff8290 68% 100%); }
+    .bmi-marker { position: absolute; top: 50%; left: 0%; width: 16px; height: 16px; border: 3px solid var(--surface); border-radius: 50%; background: var(--ink); box-shadow: 0 2px 8px #17203355; transform: translate(-50%, -50%); transition: left .6s ease; }
+    .bmi-scale-labels { display: flex; justify-content: space-between; margin-top: 7px; color: var(--muted); font-size: .68rem; }
+    .result-label { color: var(--muted); font-size: .86rem; } .result-value { margin-top: 2px; font-size: 1.55rem; font-weight: 760; letter-spacing: -.02em; } .result-note { margin-top: 3px; color: var(--muted); font-size: .84rem; }
+    .tag { display: inline-block; margin-left: 7px; padding: 2px 8px; border-radius: 999px; background: var(--input); color: var(--accent-dark); font-size: .8rem; vertical-align: 3px; }
+    .notice { margin: 18px 0 0; padding: 13px 15px; border-left: 3px solid #f2b544; background: var(--notice-bg); border-radius: 8px; color: var(--notice-ink); font-size: .84rem; }
+    .foot { margin-top: 16px; color: var(--muted); font-size: .8rem; } .hidden { display: none; }
+    .macro-card { margin-top: 20px; background: linear-gradient(135deg, var(--surface), var(--soft)); }
+    .macro-goal { width: 220px; min-height: 42px; }
+    .macro-hero { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 16px; }
+    .macro-kcal { font-size: clamp(2rem, 6vw, 3rem); line-height: 1; font-weight: 820; letter-spacing: -.05em; color: var(--accent-dark); }
+    .macro-kcal small { display: block; margin-top: 7px; color: var(--muted); font-size: .8rem; font-weight: 600; letter-spacing: 0; }
+    .macro-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .macro-box { position: relative; padding: 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+    .macro-box::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--macro-color); }
+    .macro-box.protein { --macro-color: #d98bff; } .macro-box.carbs { --macro-color: #62d6a2; } .macro-box.fat { --macro-color: #f3c76c; }
+    .macro-label { color: var(--muted); font-size: .82rem; } .macro-value { margin-top: 3px; font-size: 1.65rem; font-weight: 800; } .macro-note { margin: 3px 0 0; color: var(--muted); font-size: .78rem; }
+    .macro-foot { margin: 14px 0 0; color: var(--muted); font-size: .8rem; }
+    .analysis-card { margin-top: 20px; }
+    .recommend-card { margin-top: 20px; }
+    .recommend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .recommend-panel { padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: var(--subtle); }
+    .recommend-panel h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 9px; font-size: 1rem; }
+    .recommend-panel h3::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .recommend-panel p { margin: 0; color: var(--muted); font-size: .88rem; }
+    .recommend-panel ul { margin: 10px 0 0; padding-left: 1.25rem; } .recommend-panel li { margin: 5px 0; font-size: .88rem; }
+    .recommend-badge { display: inline-block; padding: 4px 9px; border-radius: 999px; background: var(--soft); color: var(--accent-dark); font-size: .8rem; font-weight: 700; }
+    .recommend-disclaimer { margin: 14px 0 0; color: var(--muted); font-size: .78rem; }
+    .advice-chart { display: grid; gap: 10px; margin-top: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 15px; background: linear-gradient(135deg, var(--soft), var(--surface)); }
+    .advice-row { display: grid; grid-template-columns: 130px 1fr 52px; gap: 10px; align-items: center; font-size: .8rem; } .advice-row label { margin: 0; font-size: .8rem; } .advice-track { height: 9px; overflow: hidden; border-radius: 999px; background: var(--subtle-line); } .advice-bar { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #7c9cff, #d98bff); animation: grow-bar .8s .1s ease forwards; } @keyframes grow-bar { to { width: var(--bar-width); } } .advice-value { color: var(--muted); text-align: right; font-size: .76rem; }
+
+    .lifestyle-card { margin-top: 20px; --card-accent: #62d6a2; }
+    .lifestyle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 12px; }
+    .lifestyle-item { padding: 16px; border: 1px solid var(--line); border-radius: 15px; background: linear-gradient(145deg, var(--subtle), var(--surface)); }
+    .lifestyle-icon { display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 10px; border-radius: 10px; background: var(--soft); color: var(--accent-dark); font-weight: 800; }
+    .lifestyle-label { color: var(--muted); font-size: .8rem; } .lifestyle-value { margin-top: 2px; font-size: 1.45rem; font-weight: 800; } .lifestyle-note { margin: 3px 0 0; color: var(--muted); font-size: .76rem; }
+    .lifestyle-insight { margin-top: 14px; padding: 13px 15px; border-radius: 12px; background: var(--soft); color: var(--ink); font-size: .84rem; }
+    .plan-card { margin-top: 20px; }
+    .plan-controls { display: flex; gap: 10px; align-items: center; } .plan-controls select { width: 150px; min-height: 40px; }
+    .plan-progress { height: 7px; margin: 12px 0 16px; overflow: hidden; border-radius: 999px; background: var(--subtle-line); } .plan-progress span { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #7c9cff, #d98bff, #62d6a2); }
+    .plan-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 10px; }
+    .plan-day { padding: 13px; border: 1px solid var(--subtle-line); border-radius: 13px; background: var(--subtle); } .plan-day strong { color: var(--accent-dark); font-size: .84rem; } .plan-day b { display: block; margin: 4px 0; font-size: .92rem; } .plan-day p { margin: 0; color: var(--muted); font-size: .78rem; }
+    .plan-diet { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; } .plan-phase { padding: 12px; border-radius: 12px; background: var(--soft); } .plan-phase strong { font-size: .8rem; } .plan-phase p { margin: 4px 0 0; color: var(--muted); font-size: .78rem; }
+
+
+
+    /* Nutrition tracker and weekly meal ideas */
+    .nutrition-card { margin-top: 20px; --card-accent: #f3c76c; }
+    .nutrition-date { width: 190px; min-height: 42px; }
+    .nutrition-form { display: grid; grid-template-columns: 1.1fr 1.3fr repeat(4, minmax(100px, .8fr)) auto; gap: 10px; align-items: end; }
+    .nutrition-form .field { min-width: 0; }
+    .nutrition-form input, .nutrition-form select { min-height: 42px; }
+    .nutrition-form button { min-height: 42px; white-space: nowrap; }
+    .nutrition-totals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
+    .nutrition-total { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--subtle); }
+    .nutrition-total-label { color: var(--muted); font-size: .78rem; }
+    .nutrition-total-value { margin-top: 3px; font-weight: 800; }
+    .nutrition-progress-list { display: grid; gap: 9px; margin: 12px 0 18px; }
+    .nutrition-progress-row { display: grid; grid-template-columns: 76px minmax(80px, 1fr) 150px; align-items: center; gap: 10px; font-size: .82rem; }
+    .nutrition-track { height: 9px; overflow: hidden; border-radius: 999px; background: var(--subtle-line); }
+    .nutrition-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#7c9cff,#62d6a2); }
+    .macro-pie-analysis { margin: 18px 0 20px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(145deg,var(--soft),var(--surface)); }
+    .macro-pie-analysis h3 { margin: 0 0 4px; font-size: 1rem; }
+    .macro-pie-note { margin: 0 0 14px; color: var(--muted); font-size: .78rem; }
+    .macro-pie-layout { display: grid; grid-template-columns: minmax(150px,210px) minmax(0,1fr); align-items: center; gap: 22px; }
+    .macro-pie-chart { width: min(100%,210px); aspect-ratio: 1; border: 4px solid var(--surface); border-radius: 50%; background: conic-gradient(var(--subtle-line) 0 100%); box-shadow: 0 5px 18px #17203318; }
+    .macro-pie-legend { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+    .macro-pie-legend li { display: grid; grid-template-columns: 12px minmax(70px,1fr) auto; align-items: center; gap: 7px 9px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+    .macro-pie-dot { width: 11px; height: 11px; border-radius: 50%; }
+    .macro-pie-legend .macro-pie-name { font-size: .86rem; font-weight: 700; }
+    .macro-pie-legend strong { font-size: .92rem; }
+    .macro-pie-legend small { grid-column: 2 / -1; color: var(--muted); font-size: .76rem; }
+    .macro-pie-total { margin: 12px 0 0; color: var(--muted); font-size: .82rem; }
+    .macro-pie-total strong { color: var(--ink); }
+    .food-log { display: grid; gap: 8px; }
+    .food-log-item { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 12px; padding: 11px 13px; border: 1px solid var(--subtle-line); border-radius: 11px; background: var(--subtle); }
+    .food-log-name { font-weight: 700; }
+    .food-log-meta { color: var(--muted); font-size: .79rem; }
+    .food-log-item .danger { min-height: 34px; }
+    .recipe-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 18px; }
+    .recipe-day { padding: 14px; border: 1px solid var(--line); border-radius: 13px; background: linear-gradient(145deg,var(--subtle),var(--surface)); }
+    .recipe-day h3 { margin: 0 0 7px; color: var(--accent-dark); font-size: .95rem; }
+    .recipe-day p { margin: 5px 0; font-size: .81rem; }
+    .recipe-day p span { color: var(--muted); }
+    .recipe-note { margin: 12px 0 0; color: var(--muted); font-size: .78rem; }
+    .plan-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; min-width: 0; }
+    #plan-week { flex: 1 1 250px; width: min(100%, 300px); min-width: 230px; }
+    .plan-days { display: grid; grid-template-columns: minmax(0,1fr); gap: 9px; width: 100%; overflow-x: auto; padding-bottom: 4px; }
+    .plan-day { display: grid; grid-template-columns: 86px minmax(145px,.75fr) minmax(220px,2fr) minmax(175px,1fr); gap: 12px; align-items: center; min-width: 720px; padding: 13px 15px; }
+    .plan-day b { margin: 0; }
+    .plan-day p { min-width: 0; }
+    .plan-day details { color: var(--muted); font-size: .78rem; }
+    .plan-day details summary { color: var(--accent-dark); cursor: pointer; font-weight: 700; }
+    .plan-day details ul { margin: 6px 0 0; padding-left: 1.1rem; }
+    .plan-day details li { margin: 3px 0; }
+    .plan-check { display: flex; align-items: center; gap: 7px; margin: 0; white-space: nowrap; font-size: .82rem; cursor: pointer; }
+    .plan-check input { width: 18px; min-height: 18px; height: 18px; margin: 0; accent-color: var(--good); }
+    .plan-day.is-complete { border-color: color-mix(in srgb, var(--good) 55%, var(--line)); background: color-mix(in srgb, var(--good) 7%, var(--subtle)); }
+    .plan-progress { height: 8px; }
+    .plan-progress span { width: 0; transition: width .25s ease; }
+    .plan-progress-label { margin: -8px 0 12px; color: var(--muted); font-size: .8rem; }
+    @media (max-width: 900px) { .nutrition-form { grid-template-columns: repeat(3,minmax(0,1fr)); } .nutrition-form button { grid-column: 1/-1; } }
+    @media (max-width: 620px) { .nutrition-form { grid-template-columns: repeat(2,minmax(0,1fr)); } .nutrition-form button { grid-column: 1/-1; } .nutrition-totals { grid-template-columns: repeat(2,1fr); } .nutrition-progress-row { grid-template-columns: 60px minmax(45px,1fr) 115px; gap: 7px; font-size: .75rem; } .macro-pie-layout { grid-template-columns: minmax(110px,145px) minmax(0,1fr); gap: 12px; } .macro-pie-chart { width: min(100%,145px); } .macro-pie-legend li { grid-template-columns: 10px minmax(0,1fr) auto; padding: 8px; gap: 6px; } .macro-pie-legend .macro-pie-name { font-size: .78rem; } .macro-pie-legend strong { font-size: .82rem; } .recipe-grid { grid-template-columns: 1fr; } .food-log-item { grid-template-columns: minmax(0,1fr) auto; } .food-log-item .danger { grid-column: 2; } #plan-week { width: 100%; min-width: 0; flex-basis: 100%; } }
+
+    .analysis-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .analysis-box { padding: 14px; border: 1px solid var(--subtle-line); border-radius: 13px; background: var(--subtle); }
+    .analysis-label { color: var(--muted); font-size: .78rem; } .analysis-value { margin-top: 3px; font-size: 1.25rem; font-weight: 760; } .analysis-note { margin: 3px 0 0; color: var(--muted); font-size: .78rem; }
+    .shape-banner { margin-top: 14px; padding: 14px 16px; border-radius: 13px; background: var(--soft); border: 1px solid var(--line); }
+    .shape-banner strong { color: var(--accent-dark); } .chart-card { margin-top: 20px; } .chart-select { width: 190px; min-height: 42px; }
+    .chart-wrap { width: 100%; overflow: hidden; padding: 8px 0 0; } .chart-svg { display: block; width: 100%; max-width: 100%; min-width: 0; height: auto; aspect-ratio: 900 / 270; }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; color: var(--muted); font-size: .82rem; } .legend-dot { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 50%; } .legend-bmi { background: #7c9cff; } .legend-weight { background: #62d6a2; }
+    .chart-empty { min-height: 180px; display: grid; place-items: center; border: 1px dashed var(--line); border-radius: 13px; color: var(--muted); text-align: center; padding: 24px; }
+    .history-card { margin-top: 20px; } .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; } .section-heading h2 { margin: 0; } .eyebrow { display: block; margin-bottom: 4px; color: var(--accent-dark); font-size: .7rem; font-weight: 800; letter-spacing: .12em; } .section-subtitle { margin: 4px 0 0; color: var(--muted); font-size: .82rem; } .input-status { padding: 5px 10px; border-radius: 999px; background: var(--soft); color: var(--accent-dark); font-size: .78rem; font-weight: 700; white-space: nowrap; }
+    .history-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; } .history-toolbar { display: flex; gap: 10px; margin-bottom: 14px; } .history-toolbar input { flex: 1; min-height: 42px; } .history-toolbar select { width: 155px; min-height: 42px; } .history-count { color: var(--muted); font-size: .85rem; } .danger { background: transparent; color: var(--bad); border: 1px solid var(--line); min-height: 38px; padding: 7px 12px; }
+    .history-list { display: grid; gap: 10px; } .history-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; } .summary-box { padding: 12px 14px; border-radius: 12px; background: var(--subtle); border: 1px solid var(--subtle-line); } .summary-label { color: var(--muted); font-size: .78rem; } .summary-value { margin-top: 2px; font-size: 1.2rem; font-weight: 760; } .history-empty { margin: 0; padding: 18px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); text-align: center; }
+    .history-item { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 13px 14px; border: 1px solid var(--subtle-line); border-radius: 12px; background: var(--subtle); }
+    .history-main { min-width: 0; } .history-date { color: var(--muted); font-size: .8rem; } .history-metrics { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 3px; font-weight: 700; } .history-metrics span { white-space: nowrap; }
+    .history-meta { margin-top: 3px; color: var(--muted); font-size: .8rem; } .history-item-actions { display: flex; gap: 7px; } .history-item-actions button { min-height: 36px; padding: 6px 10px; font-size: .85rem; }
+    @media (max-width: 880px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } .actions button { flex: 1 1 180px; } }
+    @media (max-width: 720px) { .wrap { width: min(calc(100% - 28px), 680px); margin: 20px auto 42px; } header { padding: 22px 64px 22px 20px; } .card { padding: 20px; } }
+    @media (max-width: 720px) { .macro-hero { align-items: flex-start; flex-direction: column; } .macro-goal, .chart-select { width: 100%; } .analysis-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } .history-actions { width: 100%; justify-content: flex-start; } .history-actions .history-count { width: 100%; } .history-actions button { flex: 1; } .history-toolbar { flex-direction: column; } .history-toolbar select { width: 100%; } }
+    @media (max-width: 420px) { .wrap { width: calc(100% - 20px); margin-top: 12px; } header { padding: 18px 18px 20px; } .theme-toggle { position: static; margin-top: 14px; } .card { padding: 16px; border-radius: 16px; } .section-heading { align-items: stretch; } .section-heading > * { max-width: 100%; } .history-actions button { flex: 1 1 100%; } .macro-goal, .chart-select { width: 100%; } }
+    @media (max-width: 720px) { .plan-diet { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 520px) { .plan-controls { width: 100%; } .plan-controls select { flex: 1; width: auto; } .plan-diet { grid-template-columns: 1fr; } .recommend-grid { grid-template-columns: 1fr; } .macro-grid { grid-template-columns: 1fr; } .history-toolbar { flex-direction: column; } .history-toolbar select { width: 100%; } .history-summary { grid-template-columns: 1fr; } .card { padding: 18px; } .grid { gap: 12px; } .section-heading { align-items: flex-start; flex-direction: column; } .history-actions { width: 100%; justify-content: space-between; } .history-item { grid-template-columns: 1fr; } .history-item-actions { justify-content: flex-end; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1>BMI・體脂率計算器</h1>
+      <p class="intro">輸入身體資料，快速估算 BMI、體脂率、基礎代謝率與每日熱量需求。</p>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="切換深色模式" aria-pressed="false" title="切換深色模式">☾ 深色</button>
+    </header>
+
+    <div class="layout">
+      <section class="card" id="input-card" aria-labelledby="input-title">
+        <div class="section-heading input-heading"><div><span class="eyebrow">STEP 1 · INPUT</span><h2 id="input-title">身體資料</h2><p class="section-subtitle">填寫基本資料與身體圍度，完成後按下計算。</p></div><span class="input-status" id="input-status">尚未計算</span></div>
+        <form id="calc-form" novalidate>
+          <div class="grid">
+            <div class="field">
+              <label for="height">身高 <span class="unit">cm</span></label>
+              <input id="height" type="number" inputmode="decimal" min="50" max="250" step="any" placeholder="例如 168.5" value="">
+            </div>
+            <div class="field">
+              <label for="weight">體重 <span class="unit">kg</span></label>
+              <input id="weight" type="number" inputmode="decimal" min="10" max="500" step="any" placeholder="例如 62.5" value="">
+            </div>
+            <div class="field">
+              <label for="age">年齡 <span class="unit">歲</span></label>
+              <input id="age" type="number" inputmode="numeric" min="10" max="120" step="1" placeholder="例如 28" value="">
+            </div>
+            <div class="field">
+              <label for="sex">性別（公式選項）</label>
+              <select id="sex">
+                <option value="male">男性</option>
+                <option value="female">女性</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label for="activity">活動量（估算每日熱量用）</label>
+              <select id="activity">
+                <option value="1.2">久坐：很少或沒有運動</option>
+                <option value="1.375">輕度：每週運動 1–3 天</option>
+                <option value="1.55" selected>中度：每週運動 3–5 天</option>
+                <option value="1.725">高度：每週運動 6–7 天</option>
+                <option value="1.9">非常高：高強度訓練或體力工作</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="waist">腰圍 <span class="unit">cm（選填）</span></label>
+              <input id="waist" type="number" inputmode="decimal" min="20" max="250" step="any" placeholder="例如 78.5">
+            </div>
+            <div class="field">
+              <label for="neck">頸圍 <span class="unit">cm（選填）</span></label>
+              <input id="neck" type="number" inputmode="decimal" min="15" max="100" step="any" placeholder="例如 35.2">
+            </div>
+            <div class="field">
+              <label for="shoulder">肩寬 <span class="unit">cm（選填；體型分析）</span></label>
+              <input id="shoulder" type="number" inputmode="decimal" min="20" max="100" step="any" placeholder="例如 42.5">
+            </div>
+            <div class="field">
+              <label for="leg-length">腿長 <span class="unit">cm（選填；黃金比例）</span></label>
+              <input id="leg-length" type="number" inputmode="decimal" min="40" max="180" step="any" placeholder="例如 82.5" value="">
+            </div>
+            <div class="field full" id="hip-field">
+              <label for="hip">臀圍 <span class="unit">cm（選填）</span></label>
+              <input id="hip" type="number" inputmode="decimal" min="30" max="250" step="any" placeholder="例如 96.5">
+            </div>
+          </div>
+          <div class="actions">
+            <button class="primary" type="submit">計算</button>
+            <button class="secondary" type="reset">清除</button>
+          </div>
+          <p class="error" id="error" role="alert" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="card post-calc hidden" id="result-card" aria-labelledby="result-title">
+        <h2 id="result-title">計算結果</h2>
+        <div class="results" aria-live="polite">
+          <div class="result primary-result">
+            <div class="result-label">BMI 身體質量指數</div>
+            <div class="result-value"><span id="bmi">—</span><span class="tag" id="bmi-category">等待計算</span></div>
+            <div class="result-note" id="healthy-range">輸入身高與體重後計算</div>
+            <div class="bmi-scale" aria-label="BMI 參考區間"><span class="bmi-marker" id="bmi-marker"></span><div class="bmi-scale-labels"><span>過輕</span><span>正常</span><span>過重</span><span>肥胖</span></div></div>
+          </div>
+          <div class="result body-fat-result" id="body-fat-result">
+            <div class="result-label">估算體脂率</div>
+            <div class="result-value" id="body-fat">—</div>
+            <div class="result-note" id="body-fat-note">需要填寫腰圍、頸圍；女性另需臀圍</div>
+          </div>
+          <div class="result">
+            <div class="result-label">基礎代謝率（BMR）</div>
+            <div class="result-value" id="bmr">—</div>
+            <div class="result-note">每日靜息狀態下的估算熱量（kcal）</div>
+          </div>
+          <div class="result">
+            <div class="result-label">每日總消耗熱量（TDEE）</div>
+            <div class="result-value" id="tdee">—</div>
+            <div class="result-note">按所選活動量估算維持體重所需熱量（kcal／日）</div>
+          </div>
+        </div>
+        <div class="result-actions"><button class="primary again-button hidden" id="new-measurement" type="button">↻ 再測一次</button></div>
+        <p class="notice">這些數字是一般成人的參考估算，不是診斷。體脂率採美國海軍圍度公式，結果可能與體脂計不同；BMI 對兒童、孕婦、長者或高肌肉量人士不一定適用。</p>
+        <p class="foot">小數輸入支援，例如身高 168.5 cm、體重 62.3 kg。腰圍請以 cm 輸入；量腰圍時保持自然呼吸並使用一致的測量位置。</p>
+      </section>
+    </div>
+
+    <section class="card macro-card post-calc hidden" aria-labelledby="macro-title">
+      <div class="section-heading"><h2 id="macro-title">每日熱量與巨量營養素建議</h2><select class="macro-goal" id="macro-goal" aria-label="目標設定"><option value="maintain">維持體重</option><option value="lose">減脂（溫和熱量赤字）</option><option value="gain">增肌（溫和熱量盈餘）</option></select></div>
+      <div class="macro-hero"><div><div class="macro-kcal" id="macro-calories">—</div><small>每日建議熱量 kcal</small></div><div class="history-count" id="macro-summary">先完成身高、體重、年齡與活動量計算</div></div>
+      <div class="macro-grid"><div class="macro-box protein"><div class="macro-label">蛋白質</div><div class="macro-value" id="macro-protein">—</div><p class="macro-note" id="macro-protein-note">建議約 1.6 g／kg</p></div><div class="macro-box carbs"><div class="macro-label">碳水化合物</div><div class="macro-value" id="macro-carbs">—</div><p class="macro-note">約佔剩餘熱量</p></div><div class="macro-box fat"><div class="macro-label">脂肪</div><div class="macro-value" id="macro-fat">—</div><p class="macro-note">約佔總熱量 25%</p></div></div>
+      <p class="macro-foot">此為一般成人估算：蛋白質以體重 × 1.6 g、脂肪以總熱量 25% 計算，其餘熱量分配給碳水；不取代營養師或醫療建議。</p>
+    </section>
+
+
+    <section class="card nutrition-card post-calc hidden" id="nutrition-card" aria-labelledby="nutrition-title">
+      <div class="section-heading"><div><span class="eyebrow">FOOD & MACROS</span><h2 id="nutrition-title">飲食營養素追蹤</h2><p class="section-subtitle">記下每餐攝取，查看熱量與蛋白質、碳水、脂肪進度；資料只保存在此瀏覽器。</p></div><label class="field">紀錄日期<input class="nutrition-date" id="nutrition-date" type="date" aria-label="選擇飲食紀錄日期"></label></div>
+      <form id="nutrition-form" class="nutrition-form">
+        <div class="field"><label for="food-meal">餐別</label><select id="food-meal"><option>早餐</option><option>午餐</option><option>晚餐</option><option>點心</option></select></div>
+        <div class="field"><label for="food-name">食物／餐點</label><input id="food-name" type="text" maxlength="80" placeholder="例如：雞胸肉糙米碗" required></div>
+        <div class="field"><label for="food-kcal">熱量 kcal</label><input id="food-kcal" type="number" min="0" step="any" inputmode="decimal" placeholder="例 420" required></div>
+        <div class="field"><label for="food-protein">蛋白質 g</label><input id="food-protein" type="number" min="0" step="any" inputmode="decimal" placeholder="例 30" required></div>
+        <div class="field"><label for="food-carbs">碳水 g</label><input id="food-carbs" type="number" min="0" step="any" inputmode="decimal" placeholder="例 45" required></div>
+        <div class="field"><label for="food-fat">脂肪 g</label><input id="food-fat" type="number" min="0" step="any" inputmode="decimal" placeholder="例 12" required></div>
+        <button class="primary" type="submit">＋ 新增紀錄</button>
+      </form>
+      <div class="nutrition-totals" aria-live="polite">
+        <div class="nutrition-total"><div class="nutrition-total-label">今日熱量</div><div class="nutrition-total-value" id="nutrition-calories-total">0 / — kcal</div></div>
+        <div class="nutrition-total"><div class="nutrition-total-label">蛋白質</div><div class="nutrition-total-value" id="nutrition-protein-total">0 / — g</div></div>
+        <div class="nutrition-total"><div class="nutrition-total-label">碳水化合物</div><div class="nutrition-total-value" id="nutrition-carbs-total">0 / — g</div></div>
+        <div class="nutrition-total"><div class="nutrition-total-label">脂肪</div><div class="nutrition-total-value" id="nutrition-fat-total">0 / — g</div></div>
+      </div>
+      <div class="nutrition-progress-list" id="nutrition-progress" aria-label="今日攝取與建議目標進度"></div>
+      <section class="macro-pie-analysis" aria-labelledby="macro-pie-title">
+        <h3 id="macro-pie-title">三大營養素熱量比例</h3>
+        <p class="macro-pie-note">依選定日期的飲食紀錄估算熱量占比；蛋白質與碳水各 4 kcal/g，脂肪 9 kcal/g。</p>
+        <div class="macro-pie-layout"><div class="macro-pie-chart" id="macro-pie-chart" role="img" aria-label="尚無三大營養素紀錄"></div><ul class="macro-pie-legend" id="macro-pie-legend"></ul></div>
+        <p class="macro-pie-total">三大營養素估算總熱量：<strong id="macro-pie-total">0 kcal</strong></p>
+      </section>
+      <h3 style="margin:18px 0 8px;font-size:1rem;">當日紀錄</h3><div class="food-log" id="food-log-list" aria-live="polite"></div>
+      <p class="recipe-note">目標值沿用上方熱量與巨量營養素估算；食物營養數字請依實際份量與包裝標示填寫。</p>
+      <div class="section-heading" style="margin-top:24px;"><div><h2 style="margin:0;">一週健康食譜靈感</h2><p class="section-subtitle">每一天都包含早餐、午餐與晚餐搭配，可依口味、預算與飲食需求替換食材。</p></div><span class="recommend-badge">7 天菜單</span></div>
+      <div class="recipe-grid" id="weekly-recipes"></div>
+      <p class="recipe-note">食譜為一般飲食靈感，並非個人化醫療飲食。若有過敏、慢性疾病、孕期或特殊飲食需求，請按自身狀況調整並諮詢專業人員。</p>
+    </section>
+
+    <section class="card lifestyle-card post-calc hidden" id="lifestyle-card" aria-labelledby="lifestyle-title">
+      <div class="section-heading"><div><span class="eyebrow">DAILY DASHBOARD</span><h2 id="lifestyle-title">今日健康行動儀表板</h2><p class="section-subtitle">把計算結果轉成今天可以執行的小目標。</p></div><span class="recommend-badge">可調整目標</span></div>
+      <div class="lifestyle-grid">
+        <div class="lifestyle-item"><div class="lifestyle-icon">H₂O</div><div class="lifestyle-label">每日飲水</div><div class="lifestyle-value" id="water-goal">—</div><p class="lifestyle-note">依體重估算，不含運動額外流失</p></div>
+        <div class="lifestyle-item"><div class="lifestyle-icon">FIB</div><div class="lifestyle-label">每日纖維</div><div class="lifestyle-value" id="fiber-goal">—</div><p class="lifestyle-note">蔬菜、豆類、全穀與水果來源</p></div>
+        <div class="lifestyle-item"><div class="lifestyle-icon">STEP</div><div class="lifestyle-label">活動步數</div><div class="lifestyle-value" id="steps-goal">—</div><p class="lifestyle-note">可拆成多次步行完成</p></div>
+        <div class="lifestyle-item"><div class="lifestyle-icon">SLEEP</div><div class="lifestyle-label">睡眠目標</div><div class="lifestyle-value">7–9 小時</div><p class="lifestyle-note">固定時間上床與起床</p></div>
+      </div>
+      <div class="lifestyle-insight" id="lifestyle-insight">完成計算後會產生今日重點。</div>
+    </section>
+
+    <section class="card analysis-card post-calc hidden" aria-labelledby="analysis-title">
+      <div class="section-heading"><h2 id="analysis-title">身材比例與體型分析</h2><span class="history-count">依輸入的圍度估算</span></div>
+      <div class="analysis-grid">
+        <div class="analysis-box" id="whr-box"><div class="analysis-label">腰臀比 WHR</div><div class="analysis-value" id="whr">—</div><p class="analysis-note" id="whr-note">需要腰圍與臀圍</p></div>
+        <div class="analysis-box" id="whtr-box"><div class="analysis-label">腰高比 WHtR</div><div class="analysis-value" id="whtr">—</div><p class="analysis-note">一般參考值：低於 0.5</p></div>
+        <div class="analysis-box" id="shr-box"><div class="analysis-label">肩臀比例</div><div class="analysis-value" id="shr">—</div><p class="analysis-note">需要肩寬與臀圍</p></div>
+        <div class="analysis-box" id="golden-box"><div class="analysis-label">腿身比例</div><div class="analysis-value" id="golden-ratio">—</div><p class="analysis-note" id="golden-note">需填腿長；黃金比例 1.618</p></div>
+      </div>
+      <div class="shape-banner" id="shape-result"><strong>體型判讀：</strong>填寫腰圍、臀圍，及選填肩寬後顯示。體型分類僅供參考，不代表健康診斷。</div>
+      <p class="foot">黃金比例以「腿長 ÷ 軀幹長（身高 − 腿長）」作近似比較；人體比例沒有單一標準，1.618 只是一個美學參考。</p>
+    </section>
+
+    <section class="card recommend-card post-calc hidden" id="recommend-card" aria-labelledby="recommend-title">
+      <div class="section-heading"><h2 id="recommend-title">身形專屬運動與飲食建議</h2><span class="recommend-badge" id="recommend-badge">等待比例資料</span></div>
+      <div class="recommend-grid">
+        <div class="recommend-panel"><h3>運動方向</h3><p id="exercise-intro">填寫腰圍、臀圍後，將根據比例提供建議。</p><ul id="exercise-list"><li>先以每週 3–5 次、每次 20–40 分鐘的活動建立穩定習慣。</li><li>搭配全身阻力訓練與適度有氧，避免只訓練單一部位。</li></ul></div>
+        <div class="recommend-panel"><h3>飲食策略</h3><p id="diet-intro">建議優先依照上方 TDEE 與巨量營養素估算調整。</p><ul id="diet-list"><li>每餐加入蛋白質、蔬菜與高纖碳水，維持飽足感。</li><li>依目標調整總熱量，並以 2–4 週體重與圍度趨勢檢視。</li></ul></div>
+      </div>
+      <div class="advice-chart" id="advice-chart" aria-label="健康與運動建議圖表"></div>
+      <p class="recommend-disclaimer">身形分類是依輸入比例做的生活化參考，不代表身體缺陷或醫療診斷；運動與飲食仍應依體能、病史、過敏與個人目標調整。若有慢性病、孕期或飲食失調史，應先諮詢醫師或註冊營養師。</p>
+    </section>
+
+    <section class="card plan-card post-calc hidden" id="plan-card" aria-labelledby="plan-title">
+      <div class="section-heading"><div><h2 id="plan-title">30 天居家雕塑計畫</h2><p class="section-subtitle" id="plan-summary">依身形分類自動安排訓練節奏與飲食重點。</p></div><div class="plan-controls"><span class="recommend-badge" id="plan-shape">等待計算</span><select id="plan-week" aria-label="選擇 30 天計畫週次"><option value="1">第 1 週｜建立習慣</option><option value="2">第 2 週｜增加刺激</option><option value="3">第 3 週｜雕塑強化</option><option value="4">第 4 週｜整合穩定</option><option value="5">第 5 週｜成果檢視</option></select></div></div>
+      <div class="plan-progress" aria-label="30 天訓練總進度"><span id="plan-progress-fill"></span></div><p class="plan-progress-label" id="plan-progress-label">已完成 0 / 30 天</p><div class="plan-days" id="plan-days"></div>
+      <div class="plan-diet" id="plan-diet"></div>
+      <p class="recommend-disclaimer">居家訓練可使用徒手、彈力帶或水瓶；若疼痛、暈眩或不適請停止。飲食計畫是一般參考，不是醫療或治療方案。</p>
+    </section>
+
+    <section class="card chart-card post-calc hidden" aria-labelledby="chart-title">
+      <div class="section-heading"><h2 id="chart-title">健康趨勢圖</h2><select class="chart-select" id="chart-metric" aria-label="選擇趨勢指標"><option value="bmi">BMI</option><option value="weight">體重（kg）</option><option value="waist">腰圍（cm）</option><option value="bodyFat">體脂率（%）</option></select></div>
+      <div class="chart-wrap" id="chart-wrap"><div class="chart-empty">完成至少兩次測量後，這裡會顯示趨勢圖。</div></div>
+      <div class="chart-legend"><span><i class="legend-dot legend-bmi" id="chart-dot"></i><span id="chart-legend-label">BMI</span></span><span class="history-count">點選圖表節點可查看日期與數值</span></div>
+    </section>
+
+    <section class="card history-card post-calc hidden" aria-labelledby="history-title">
+      <div class="section-heading">
+        <h2 id="history-title">測量歷史</h2>
+        <div class="history-actions"><span class="history-count" id="history-count">0 筆紀錄</span><button class="secondary" id="export-history" type="button">匯出 CSV</button><button class="danger" id="clear-history" type="button">清除全部</button></div>
+      </div>
+      <div class="history-summary" aria-label="歷史摘要">
+        <div class="summary-box"><div class="summary-label">最近 BMI</div><div class="summary-value" id="summary-bmi">—</div></div>
+        <div class="summary-box"><div class="summary-label">BMI 變化</div><div class="summary-value" id="summary-change">—</div></div>
+        <div class="summary-box"><div class="summary-label">最近體重</div><div class="summary-value" id="summary-weight">—</div></div>
+      </div>
+      <div class="history-toolbar"><input id="history-search" type="search" placeholder="搜尋日期、性別或測量數值…" aria-label="搜尋歷史紀錄"><select id="history-sort" aria-label="歷史紀錄排序"><option value="newest">最新優先</option><option value="oldest">最早優先</option><option value="bmi-high">BMI 高至低</option><option value="bmi-low">BMI 低至高</option></select></div>
+      <div class="history-list" id="history-list" aria-live="polite"></div>
+      <p class="foot">紀錄只會儲存在這個瀏覽器的本機，不會上傳到伺服器。</p>
+    </section>
+    <footer class="foot" style="text-align:center; margin-top:24px;">由 yixiang1019tw 製作維護 · 保有一切權利</footer>
+  </main>
+
+  <script>
+    (() => {
+      const form = document.getElementById('calc-form');
+      const $ = (id) => document.getElementById(id);
+      const HISTORY_KEY = 'bmiCalculatorHistory.v1';
+      const THEME_KEY = 'bmiCalculatorTheme.v2';
+      const NUTRITION_KEY = 'bmiNutritionLog.v1';
+      const PLAN_CHECKIN_KEY = 'bmi30DayCheckins.v1';
+      let history = loadHistory();
+      let nutritionEntries = loadNutritionEntries();
+      let planCheckins = loadPlanCheckins();
+      const number = (id) => { const raw = $(id).value.trim(); return raw === '' ? null : Number(raw); };
+      const fmt = (value, digits = 1) => Number(value).toLocaleString('zh-TW', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+      const setText = (id, text) => { $(id).textContent = text; };
+      function loadHistory() { try { const data = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); return Array.isArray(data) ? data : []; } catch (_) { return []; } }
+      function saveHistory() { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 50))); } catch (_) {} }
+      function loadNutritionEntries() { try { const data = JSON.parse(localStorage.getItem(NUTRITION_KEY) || '[]'); return Array.isArray(data) ? data : []; } catch (_) { return []; } }
+      function saveNutritionEntries() { try { localStorage.setItem(NUTRITION_KEY, JSON.stringify(nutritionEntries)); } catch (_) {} }
+      function loadPlanCheckins() { try { const data = JSON.parse(localStorage.getItem(PLAN_CHECKIN_KEY) || '{}'); return data && typeof data === 'object' && !Array.isArray(data) ? data : {}; } catch (_) { return {}; } }
+      function savePlanCheckins() { try { localStorage.setItem(PLAN_CHECKIN_KEY, JSON.stringify(planCheckins)); } catch (_) {} }
+      function readSetting(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
+      function writeSetting(key, value) { try { localStorage.setItem(key, value); } catch (_) {} }
+      function bmiLabel(bmi) { if (bmi < 18.5) return ['體重過輕', 'warn']; if (bmi < 24) return ['正常範圍', 'good']; if (bmi < 27) return ['過重', 'warn']; if (bmi < 30) return ['輕度肥胖', 'bad']; if (bmi < 35) return ['中度肥胖', 'bad']; if (bmi < 40) return ['重度肥胖', 'bad']; return ['非常重度肥胖', 'bad']; }
+      function getCalculation() {
+        const heightCm = number('height'), weight = number('weight'), age = number('age'), sex = $('sex').value, waist = number('waist'), neck = number('neck'), hip = number('hip'), shoulder = number('shoulder'), legLength = number('leg-length');
+        const inputs = [['身高', heightCm, 50, 250], ['體重', weight, 10, 500], ['年齡', age, 10, 120]];
+        for (const [name, value, min, max] of inputs) if (value === null || !Number.isFinite(value) || value < min || value > max || (name === '年齡' && !Number.isInteger(value))) return { error: name === '年齡' ? '年齡欄位：請輸入 10 至 120 之間的整數。' : `${name}欄位：請輸入 ${min} 至 ${max} 之間的有效數值。` };
+        const optionalInputs = [['腰圍', waist, 20, 250], ['頸圍', neck, 15, 100], ['臀圍', hip, 30, 250], ['肩寬', shoulder, 20, 100], ['腿長', legLength, 40, 180]];
+        for (const [name, value, min, max] of optionalInputs) if (value !== null && (!Number.isFinite(value) || value < min || value > max)) return { error: `${name}欄位：請輸入 ${min} 至 ${max} 之間的有效數值，或留白。` };
+        if (legLength !== null && legLength >= heightCm) return { error: '腿長欄位：必須小於身高，或留白。' };
+        const heightM = heightCm / 100, bmi = weight / (heightM * heightM);
+        const bmr = sex === 'male' ? 10 * weight + 6.25 * heightCm - 5 * age + 5 : 10 * weight + 6.25 * heightCm - 5 * age - 161;
+        const tdee = bmr * Number($('activity').value);
+        const goal = $('macro-goal').value;
+        let bodyFat = null, bodyFatError = '';
+        const values = sex === 'female' ? [waist, neck, hip] : [waist, neck];
+        if (values.every((v) => v !== null && Number.isFinite(v) && v > 0)) {
+          if (sex === 'male') { if (waist <= neck) bodyFatError = '腰圍必須大於頸圍，請確認測量數值。'; else bodyFat = 495 / (1.0324 - 0.19077 * Math.log10(waist - neck) + 0.15456 * Math.log10(heightCm)) - 450; }
+          else { if (waist + hip <= neck) bodyFatError = '腰圍加臀圍必須大於頸圍，請確認測量數值。'; else bodyFat = 495 / (1.29579 - 0.35004 * Math.log10(waist + hip - neck) + 0.22100 * Math.log10(heightCm)) - 450; }
+        }
+        return { heightCm, weight, age, sex, waist, neck, hip, shoulder, legLength, activity: Number($('activity').value), goal, bmi, bmr, tdee, bodyFat: Number.isFinite(bodyFat) ? bodyFat : null, bodyFatError };
+      }
+      function renderCalculation(result) {
+        if (result.error) { setText('error', result.error); return false; }
+        setText('error', ''); const [label, tone] = bmiLabel(result.bmi); setText('bmi', fmt(result.bmi)); setText('bmi-category', label); $('bmi-category').style.color = `var(--${tone})`;
+        const heightM = result.heightCm / 100; setText('healthy-range', `成人常用 BMI 18.5–23.9 對應體重約 ${fmt(18.5 * heightM * heightM)}–${fmt(24 * heightM * heightM)} kg`);
+        setText('bmr', `${fmt(result.bmr, 0)} kcal／日`); setText('tdee', `${fmt(result.tdee, 0)} kcal／日`);
+        const hasCirc = result.sex === 'female' ? [result.waist, result.neck, result.hip].every((v) => v !== null) : [result.waist, result.neck].every((v) => v !== null);
+        if (result.bodyFat !== null) { $('body-fat-result').classList.remove('hidden'); setText('body-fat', `${fmt(result.bodyFat)}%`); setText('body-fat-note', '美國海軍圍度公式的估算值；受測量方式影響。'); }
+        else { $('body-fat-result').classList.add('hidden'); setText('body-fat', '—'); setText('body-fat-note', result.bodyFatError || (result.sex === 'female' ? (hasCirc ? '無法依這組數值估算，請檢查圍度輸入。' : '請填寫腰圍、頸圍及臀圍，才能用圍度公式估算。') : (hasCirc ? '無法依這組數值估算，請檢查圍度輸入。' : '請填寫腰圍及頸圍，才能用圍度公式估算。'))); }
+        renderMacros(result);
+        renderNutritionTracker(result);
+        renderWeeklyRecipes();
+        renderLifestyle(result);
+        renderAnalysis(result);
+        renderRecommendations(result);
+        render30DayPlan(result);
+        return true;
+      }
+      function getNutritionTargets(result) {
+        const factor = result.goal === 'lose' ? -500 : result.goal === 'gain' ? 300 : 0;
+        const calories = Math.max(1200, Math.round(result.tdee + factor));
+        const protein = Math.round(result.weight * 1.6);
+        const fat = Math.round(calories * .25 / 9);
+        const carbs = Math.max(0, Math.round((calories - protein * 4 - fat * 9) / 4));
+        return { calories, protein, carbs, fat };
+      }
+      function renderMacros(result) {
+        if (!result || result.error) return; const { calories, protein, carbs, fat } = getNutritionTargets(result);
+        setText('macro-calories', fmt(calories, 0)); setText('macro-protein', `${protein} g`); setText('macro-carbs', `${carbs} g`); setText('macro-fat', `${fat} g`); setText('macro-summary', result.goal === 'lose' ? `比估算維持熱量少約 500 kcal／日` : result.goal === 'gain' ? `比估算維持熱量多約 300 kcal／日` : `估算維持熱量約 ${fmt(result.tdee, 0)} kcal／日`);
+      }
+      function localDateString(date = new Date()) { return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+      function escapeHTML(value) { return String(value).replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char])); }
+      function renderNutritionTracker(result) {
+        if (!result || result.error) return;
+        const dateInput = $('nutrition-date'); if (!dateInput.value) dateInput.value = localDateString();
+        const dayEntries = nutritionEntries.filter((item) => item.date === dateInput.value);
+        const targets = getNutritionTargets(result);
+        const totals = ['calories','protein','carbs','fat'].reduce((sum, key) => { sum[key] = dayEntries.reduce((value, item) => value + (Number(item[key]) || 0), 0); return sum; }, {});
+        const labels = { calories:'熱量', protein:'蛋白質', carbs:'碳水', fat:'脂肪' };
+        const units = { calories:'kcal', protein:'g', carbs:'g', fat:'g' };
+        for (const key of Object.keys(labels)) setText(`nutrition-${key}-total`, `${fmt(totals[key], 0)} / ${fmt(targets[key], 0)} ${units[key]}`);
+        $('nutrition-progress').innerHTML = Object.keys(labels).map((key) => { const pct = targets[key] > 0 ? Math.min(100, totals[key] / targets[key] * 100) : 0; return `<div class="nutrition-progress-row"><strong>${labels[key]}</strong><div class="nutrition-track"><span style="width:${pct.toFixed(1)}%"></span></div><span>${fmt(totals[key],0)} / ${fmt(targets[key],0)} ${units[key]}</span></div>`; }).join('');
+        const macroEnergy = { protein: totals.protein * 4, carbs: totals.carbs * 4, fat: totals.fat * 9 };
+        const energyTotal = macroEnergy.protein + macroEnergy.carbs + macroEnergy.fat;
+        const share = (value) => energyTotal > 0 ? value / energyTotal * 100 : 0;
+        const pShare = share(macroEnergy.protein), cShare = share(macroEnergy.carbs), fShare = share(macroEnergy.fat);
+        const shownP = Math.round(pShare * 10) / 10, shownC = Math.round(cShare * 10) / 10;
+        const shownF = energyTotal > 0 ? Math.max(0, Math.round((100 - shownP - shownC) * 10) / 10) : 0;
+        const pie = $('macro-pie-chart');
+        pie.style.background = energyTotal > 0 ? `conic-gradient(from -90deg, #d98bff 0% ${pShare.toFixed(3)}%, #62d6a2 ${pShare.toFixed(3)}% ${(pShare + cShare).toFixed(3)}%, #f3c76c ${(pShare + cShare).toFixed(3)}% 100%)` : 'conic-gradient(var(--subtle-line) 0 100%)';
+        pie.setAttribute('aria-label', energyTotal > 0 ? `依熱量計算：蛋白質 ${shownP}%、碳水 ${shownC}%、脂肪 ${shownF}%` : '尚無三大營養素紀錄');
+        setText('macro-pie-total', `${fmt(energyTotal, 0)} kcal`);
+        $('macro-pie-legend').innerHTML = [
+          { key:'protein', label:'蛋白質', color:'#d98bff', pct:shownP },
+          { key:'carbs', label:'碳水化合物', color:'#62d6a2', pct:shownC },
+          { key:'fat', label:'脂肪', color:'#f3c76c', pct:shownF }
+        ].map((item) => `<li><i class="macro-pie-dot" style="background:${item.color}" aria-hidden="true"></i><span class="macro-pie-name">${item.label}</span><strong>${fmt(item.pct,1)}%</strong><small>${fmt(totals[item.key],1)} g · ${fmt(macroEnergy[item.key],0)} kcal</small></li>`).join('');
+        const list = $('food-log-list');
+        if (!dayEntries.length) { list.innerHTML = '<p class="history-empty">這一天還沒有飲食紀錄，新增一筆餐點開始追蹤。</p>'; return; }
+        list.innerHTML = dayEntries.map((item) => `<div class="food-log-item"><div><div class="food-log-name">${escapeHTML(item.meal)} · ${escapeHTML(item.food)}</div><div class="food-log-meta">${fmt(item.calories,0)} kcal · 蛋白質 ${fmt(item.protein,0)} g · 碳水 ${fmt(item.carbs,0)} g · 脂肪 ${fmt(item.fat,0)} g</div></div><button class="danger" type="button" data-delete-food="${escapeHTML(item.id)}" aria-label="刪除 ${escapeHTML(item.food)}">刪除</button></div>`).join('');
+        list.querySelectorAll('[data-delete-food]').forEach((button) => button.addEventListener('click', () => { nutritionEntries = nutritionEntries.filter((item) => item.id !== button.dataset.deleteFood); saveNutritionEntries(); renderNutritionTracker(getCalculation()); }));
+      }
+      const weeklyRecipeData = [
+        { day:'週一', meals:['早餐：燕麥優格莓果碗（燕麥、無糖優格、莓果、少量堅果）','午餐：雞胸糙米蔬菜碗（雞胸、糙米、花椰菜、彩椒）','晚餐：香煎鮭魚地瓜餐（鮭魚、地瓜、綜合生菜）'] },
+        { day:'週二', meals:['早餐：蔬菜蛋吐司（全麥吐司、雞蛋、番茄、菠菜）','午餐：豆腐毛豆藜麥碗（板豆腐、毛豆、藜麥、小黃瓜）','晚餐：番茄鷹嘴豆燉菜（鷹嘴豆、番茄、洋蔥、全麥麵包）'] },
+        { day:'週三', meals:['早餐：香蕉花生燕麥（燕麥、香蕉、無糖豆漿、花生醬少量）','午餐：鮪魚地瓜沙拉（鮪魚、地瓜、生菜、玉米）','晚餐：雞肉蔬菜炒飯（雞肉、糙米飯、冷凍綜合蔬菜、雞蛋）'] },
+        { day:'週四', meals:['早餐：高蛋白豆漿水果杯（無糖豆漿、希臘優格、奇異果、燕麥）','午餐：鮭魚飯糰與海帶芽湯（鮭魚、糙米、海帶芽、豆腐）','晚餐：豬里肌蔬菜捲（瘦里肌、高麗菜、菇類、全麥飯）'] },
+        { day:'週五', meals:['早餐：酪梨水煮蛋全麥三明治（全麥麵包、雞蛋、酪梨、生菜）','午餐：扁豆咖哩糙米飯（扁豆、番茄、咖哩香料、糙米）','晚餐：蒸鱈魚與彩蔬（鱈魚、南瓜、青花菜、菇類）'] },
+        { day:'週六', meals:['早餐：地瓜蛋豆漿組合（地瓜、雞蛋、無糖豆漿、小番茄）','午餐：雞肉全麥捲餅（雞肉、全麥餅皮、生菜、優格醬）','晚餐：豆腐菇菇鍋（豆腐、各式菇類、白菜、冬粉適量）'] },
+        { day:'週日', meals:['早餐：蘋果肉桂燕麥粥（燕麥、蘋果、牛奶或豆漿、肉桂）','午餐：蝦仁毛豆藜麥沙拉（蝦仁、毛豆、藜麥、生菜）','晚餐：家常滷雞腿與五穀飯（去皮雞腿、五穀飯、燙青菜）'] }
+      ];
+      function renderWeeklyRecipes() { $('weekly-recipes').innerHTML = weeklyRecipeData.map((day) => `<article class="recipe-day"><h3>${day.day}</h3>${day.meals.map((meal) => { const parts = meal.split('：'); return `<p><strong>${parts[0]}</strong>：${parts[1]}</p>`; }).join('')}</article>`).join(''); }
+      $('nutrition-date').value = localDateString();
+      $('nutrition-date').addEventListener('change', () => renderNutritionTracker(getCalculation()));
+      $('nutrition-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const fields = ['food-kcal','food-protein','food-carbs','food-fat'];
+        const values = fields.map((id) => Number($(id).value));
+        if (values.some((value) => !Number.isFinite(value) || value < 0)) return;
+        nutritionEntries.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, date: $('nutrition-date').value || localDateString(), meal: $('food-meal').value, food: $('food-name').value.trim(), calories: values[0], protein: values[1], carbs: values[2], fat: values[3] });
+        saveNutritionEntries(); $('nutrition-form').reset(); $('nutrition-date').value = $('nutrition-date').value || localDateString(); renderNutritionTracker(getCalculation());
+      });
+      function renderLifestyle(result) {
+        if (!result || result.error) return; const calories = Math.max(1200, result.tdee + (result.goal === 'lose' ? -500 : result.goal === 'gain' ? 300 : 0)); const water = Math.round(result.weight * 35); const fiber = Math.round(calories / 1000 * 14); const steps = result.goal === 'lose' ? 9000 : result.goal === 'gain' ? 7000 : 8000;
+        setText('water-goal', `${(water / 1000).toFixed(1)} L`); setText('fiber-goal', `${fiber} g`); setText('steps-goal', `${steps.toLocaleString('zh-TW')} 步`); setText('lifestyle-insight', result.goal === 'lose' ? '今日重點：維持溫和熱量赤字，加上步行與阻力訓練，觀察腰圍與體重趨勢。' : result.goal === 'gain' ? '今日重點：完成蛋白質與阻力訓練，讓熱量盈餘服務於恢復與肌力。' : '今日重點：維持穩定飲食、活動與睡眠，不必追求每天完美。');
+        const bmi = Math.min(40, Math.max(12, result.bmi)); $('bmi-marker').style.left = `${((bmi - 12) / 28 * 100).toFixed(1)}%`;
+      }
+      function renderAnalysis(result) {
+        if (!result || result.error) return;
+        $('whr-box').classList.toggle('hidden', !(result.waist && result.hip)); $('whtr-box').classList.toggle('hidden', !(result.waist && result.heightCm)); $('shr-box').classList.toggle('hidden', !(result.shoulder && result.hip)); $('golden-box').classList.toggle('hidden', !(result.legLength && result.legLength < result.heightCm)); $('shape-result').classList.toggle('hidden', !(result.waist && result.hip));
+        if (result.waist && result.hip) { const whr = result.waist / result.hip; setText('whr', fmt(whr, 2)); setText('whr-note', whr < .8 ? '偏纖細腰線' : whr < .9 ? '腰臀差異適中' : '腰臀差異較小'); } else { setText('whr', '—'); setText('whr-note', '需要腰圍與臀圍'); }
+        if (result.waist && result.heightCm) setText('whtr', fmt(result.waist / result.heightCm, 2)); else setText('whtr', '—');
+        if (result.shoulder && result.hip) setText('shr', fmt(result.shoulder / result.hip, 2)); else setText('shr', '—');
+        if (result.legLength && result.legLength < result.heightCm) { const ratio = result.legLength / (result.heightCm - result.legLength); setText('golden-ratio', fmt(ratio, 2)); setText('golden-note', `與 1.618 相差 ${fmt(Math.abs(ratio - 1.618), 2)}`); } else { setText('golden-ratio', '—'); setText('golden-note', '需填腿長；黃金比例 1.618'); }
+        let shape = '資料不足，填寫腰圍、臀圍，並建議加上肩寬。';
+        $('whr-box').classList.toggle('hidden', !(result.waist && result.hip)); $('whtr-box').classList.toggle('hidden', !(result.waist && result.heightCm)); $('shr-box').classList.toggle('hidden', !(result.shoulder && result.hip)); $('golden-box').classList.toggle('hidden', !(result.legLength && result.legLength < result.heightCm)); $('shape-result').classList.toggle('hidden', !(result.waist && result.hip));
+        if (result.waist && result.hip) { const whr = result.waist / result.hip; if (result.shoulder) { const sr = result.shoulder / result.hip; shape = sr > 1.05 ? '倒三角型：肩部相對臀部較寬。' : sr < .95 ? '梨形：臀部相對肩部較寬。' : whr < .78 ? '沙漏型：肩臀接近且腰線明顯。' : whr >= .88 ? '蘋果型：腰臀差異較小。' : '直筒型：肩、腰、臀比例較接近。'; } else shape = whr < .78 ? '沙漏／腰線明顯傾向；填寫肩寬可分辨是否偏倒三角型。' : whr >= .88 ? '蘋果型／腰臀差異較小傾向。' : '直筒型／比例均衡傾向；填寫肩寬可提高判讀參考。'; }
+        $('shape-result').innerHTML = `<strong>體型判讀：</strong>${shape} <span class="history-count">（非醫療或審美評分）</span>`;
+      }
+      function classifyShape(result) {
+        if (!result || !result.waist || !result.hip) return null; const whr = result.waist / result.hip; const sr = result.shoulder ? result.shoulder / result.hip : null;
+        if (sr !== null) return sr > 1.05 ? '倒三角型' : sr < .95 ? '梨形' : whr < .78 ? '沙漏型' : whr >= .88 ? '蘋果型' : '直筒型';
+        return whr < .78 ? '沙漏型傾向' : whr >= .88 ? '蘋果型傾向' : '直筒型傾向';
+      }
+      function render30DayPlan(result) {
+        const shape = classifyShape(result); if (!shape) { $('plan-card').classList.add('hidden'); setText('plan-shape','等待比例資料'); $('plan-days').innerHTML = '<p class="history-empty">完成腰圍與臀圍測量後，會產生個人化 30 天計畫。</p>'; $('plan-diet').innerHTML = ''; return; }
+        $('plan-card').classList.remove('hidden'); const key = shape.includes('傾向') ? '直筒型' : shape; const plans = {
+          '倒三角型': { focus:'下肢臀腿、核心穩定與全身平衡', workouts:['臀腿力量：深蹲 3×12、臀推 3×15、髖外展 3×15','核心與步行：死蟲 3×10、側棒式 3×20 秒、快走 25 分鐘','下肢單腳：弓步 3×10／側、單腿臀橋 3×12','恢復：伸展 20 分鐘＋輕鬆步行','成果檢視：記錄臀圍、腰圍與深蹲完成度'], diet:['蛋白質平均分配到每餐','訓練後補充蛋白質＋碳水','蔬菜至少佔每餐一半','週末預備低加工食物'] },
+          '沙漏型': { focus:'肩腰臀平衡、核心控制與全身線條', workouts:['全身循環：深蹲、划船、臀推各 3 組','核心穩定：鳥狗、側棒式、臀中肌各 3 組','上肢下肢交替：推舉、弓步、髖推各 3 組','有氧恢復：單車或快走 30 分鐘','成果檢視：記錄體重、腰臀比與訓練感受'], diet:['依 TDEE 目標熱量穩定執行','每餐含蛋白質與高纖碳水','訓練日前後補充適量碳水','避免極端低碳或跳餐'] },
+          '梨形': { focus:'臀腿力量、上背姿勢與心肺', workouts:['臀腿：硬舉、臀推、分腿蹲各 3 組','上背：划船、面拉、反向飛鳥各 3 組','有氧：快走 30 分鐘＋伸展 10 分鐘','全身循環：蹲、推、拉、髖各 3 組','成果檢視：記錄肩臀比例與腿部力量'], diet:['每餐 25–35 g 蛋白質為目標','選全穀、豆類與蔬菜增加纖維','水分優先於含糖飲品','以整日熱量而非局部減脂調整'] },
+          '蘋果型': { focus:'全身肌力、核心穩定與低衝擊活動', workouts:['全身徒手：坐姿深蹲、牆壁伏地挺身、划船各 3 組','核心：死蟲、農夫走路、水瓶抗旋轉各 3 組','低衝擊有氧：步行 25–35 分鐘','恢復日：伸展與輕鬆散步 20 分鐘','成果檢視：記錄腰圍、步數與體能'], diet:['溫和調整總熱量，不極端節食','優先蛋白質、蔬菜、豆類與全穀','零食與飲料改成可量化份量','晚餐維持蛋白質與蔬菜，不必完全不吃碳水'] },
+          '直筒型': { focus:'全身肌力、漸進超負荷與體態', workouts:['全身力量：深蹲、臀推、划船、推舉各 3 組','單腳與核心：弓步、鳥狗、側棒式各 3 組','有氧：快走或單車 30 分鐘','恢復日：伸展、活動度與輕鬆步行','成果檢視：記錄訓練重量、體重與圍度'], diet:['蛋白質平均分配到每餐','增肌可增加 200–300 kcal','減脂以溫和赤字為主','維持蔬菜、全穀與健康脂肪比例'] }
+        }; const plan = plans[key] || plans['直筒型']; const week = Number($('plan-week').value); const start=(week-1)*7+1; setText('plan-shape', key); setText('plan-summary', `重點：${plan.focus}。每次約 25–45 分鐘，依體能調整。`);
+        const demos = [
+          { match:['臀腿力量','臀腿：','全身力量','全身循環'], items:['深蹲：雙腳約肩寬，臀部向後坐；膝蓋朝腳尖方向，站起時吐氣。','臀推／臀橋：上背靠穩或仰躺屈膝，收緊臀部抬髖，不過度拱腰。','划船：髖部微折、背部保持中立，手肘往後拉至軀幹旁。'] },
+          { match:['核心與步行','核心穩定','核心：'], items:['死蟲：仰躺收腹，對側手腳慢慢伸遠，腰背穩定貼近地面。','側棒式：手肘在肩下，身體成一直線；可先屈膝簡化。','鳥狗：四足跪姿伸展對側手腳，骨盆保持平穩不旋轉。'] },
+          { match:['下肢單腳','單腳與核心'], items:['弓步：前腳踩穩、軀幹直立，屈膝下降至舒適深度，再用前腳推回。','單腿臀橋：仰躺抬髖，保持骨盆水平；必要時改雙腳臀橋。','鳥狗：四足跪姿對側伸展，放慢速度並避免腰部塌陷。'] },
+          { match:['上背','上肢下肢交替'], items:['划船／面拉：肩膀遠離耳朵，手肘向後，肩胛自然夾合。','推舉：核心收緊，手臂上推時避免腰椎過度後仰。','弓步：採小步幅、扶牆保持平衡，膝蓋與腳尖同向。'] },
+          { match:['有氧','恢復','低衝擊','成果檢視','測量'], items:['快走或原地踏步：以可以說完整句子的強度開始，逐步增加時間。','伸展與活動度：動作緩慢、保持自然呼吸，不彈震、不拉到疼痛。','恢復日以舒適活動為主；記錄睡眠、精神與身體感受。'] },
+          { match:['全身徒手'], items:['坐姿深蹲：先往椅子方向坐，輕觸椅面再站起，膝蓋朝腳尖。','牆壁伏地挺身：手掌略寬於肩，身體維持直線，胸口靠近牆面再推回。','划船可用彈力帶或水瓶，肩膀放鬆並控制回程。'] },
+          { match:['全身力量：','全身循環：'], items:['深蹲：臀部向後坐，腳掌穩踩地面，依活動度調整深度。','臀推：以臀部發力抬髖，頂端停一下，不以腰部代償。','推舉與划船交替練習，保持軀幹穩定、動作可控制。'] }
+        ];
+        const describe = (workout) => { const group = demos.find((entry) => entry.match.some((item) => workout.startsWith(item))) || demos[4]; return group.items; };
+        const dayCount = week === 5 ? 2 : 7;
+        $('plan-days').innerHTML = Array.from({length:dayCount}, (_,i) => {
+          const day = start + i; const workout = plan.workouts[i % plan.workouts.length]; const phase = week===1?'熟悉動作與節奏':week===2?'每組增加 2 次或延長 5 秒':week===3?'增加一組或縮短休息':week===4?'維持品質並整合全身':'測量、恢復與檢視成果'; const checked = Boolean(planCheckins[day]);
+          const steps = describe(workout).map((step) => `<li>${step}</li>`).join('');
+          return `<article class="plan-day${checked?' is-complete':''}"><strong>第 ${day} 天</strong><b>${workout.split('：')[0]}</b><p>${workout}${week < 5 ? `｜${phase}` : '｜拍照、量圍度並記錄感受'}</p><details><summary>動作示範與注意事項</summary><ul>${steps}</ul></details><label class="plan-check"><input type="checkbox" data-plan-day="${day}" ${checked?'checked':''}><span>完成打卡</span></label></article>`;
+        }).join('');
+        $('plan-days').querySelectorAll('[data-plan-day]').forEach((box) => box.addEventListener('change', () => { const day = box.dataset.planDay; if (box.checked) planCheckins[day] = true; else delete planCheckins[day]; savePlanCheckins(); box.closest('.plan-day').classList.toggle('is-complete', box.checked); updatePlanProgress(); }));
+        $('plan-diet').innerHTML = [1,2,3,4].map((n,i)=>`<div class="plan-phase"><strong>第 ${n} 階段</strong><p>${plan.diet[i]}</p></div>`).join(''); updatePlanProgress();
+      }
+      function updatePlanProgress() { const completed = Object.keys(planCheckins).filter((day) => Number(day) >= 1 && Number(day) <= 30 && planCheckins[day]).length; $('plan-progress-fill').style.width = `${completed / 30 * 100}%`; setText('plan-progress-label', `已完成 ${completed} / 30 天${completed === 30 ? '｜完成計畫，太好了！' : ''}`); }
+      function renderAdviceChart(result, shape) {
+        const goal = result.goal === 'lose' ? '減脂目標' : result.goal === 'gain' ? '增肌目標' : '維持目標'; const lower = shape === '梨形' || shape === '倒三角型'; const rows = [{ label:'每週有氧', value:150, unit:'分鐘', pct:100 }, { label:'阻力訓練', value:lower ? 3 : 2, unit:'次／週', pct:lower ? 100 : 70 }, { label:'每日步行', value:8000, unit:'步', pct:80 }, { label:'蛋白質', value:Math.round(result.weight * 1.6), unit:'g／日', pct:75 }]; $('advice-chart').innerHTML = `<div class="section-subtitle"><strong>${shape}</strong> · ${goal}的行動指標</div>${rows.map(row => `<div class="advice-row"><label>${row.label}</label><div class="advice-track"><div class="advice-bar" style="--bar-width:${row.pct}%"></div></div><span class="advice-value">${fmt(row.value,0)} ${row.unit}</span></div>`).join('')}`;
+      }
+      function renderRecommendations(result) {
+        if (!result || result.error || !result.waist || !result.hip) { $('recommend-card').classList.add('hidden'); setText('recommend-badge', '等待比例資料'); setText('exercise-intro', '填寫腰圍與臀圍後，將根據比例提供建議。'); setText('diet-intro', '建議先依照上方 TDEE 與巨量營養素估算調整。'); return; }
+        $('recommend-card').classList.remove('hidden'); const whr = result.waist / result.hip; const shape = classifyShape(result) || '直筒型';
+        const plans = {
+          '倒三角型': { ex:'以建立下肢與臀部線條、平衡上半身視覺比例為主。', exercise:['每週 2–3 次臀腿雕塑：深蹲、臀推、保加利亞分腿蹲、髖外展。','上肢維持中等重量與功能性訓練，避免每次都高量肩部訓練。','每週 2 次快走、單車或游泳，搭配核心穩定。'], diet:'每餐維持蛋白質與蔬菜，訓練後補充碳水與蛋白質；不用以極端節食追求局部變化。'},
+          '沙漏型': { ex:'維持肩、腰、臀的整體平衡，強化核心與臀腿線條。', exercise:['每週 2–3 次全身阻力訓練：臀推、深蹲、划船、推舉。','加入核心抗旋轉、側棒式與臀中肌訓練，提升穩定。','每週 2 次中等強度有氧，維持心肺與活動度。'], diet:'使用 TDEE 目標熱量，蛋白質平均分配到每餐，搭配高纖碳水與健康脂肪，避免過度限制單一營養素。'},
+          '梨形': { ex:'以臀腿力量與上背、肩部姿勢訓練打造全身協調感。', exercise:['每週 2–3 次臀腿雕塑：硬舉、弓步、臀推、腿後側訓練。','加入划船、面拉與肩胛穩定，改善上半身姿勢。','每週累積約 150 分鐘中等強度有氧，依體能分段完成。'], diet:'每餐加入足量蛋白質、蔬菜與未精製碳水，先控制整日熱量與含糖飲品，不追求局部減脂。'},
+          '蘋果型': { ex:'以全身肌力、核心穩定與規律低衝擊有氧為主，逐步提升活動量。', exercise:['每週 3 次全身阻力訓練，涵蓋推、拉、蹲與髖主導動作。','每天 20–30 分鐘步行或低衝擊有氧，逐步累積時間。','核心以呼吸、抗伸展與抗旋轉為主，不需大量仰臥起坐。'], diet:'以 TDEE 為基準溫和調整，優先蛋白質、蔬菜、豆類與全穀，將零食與飲料改為可量化份量。'},
+          '直筒型': { ex:'以全身肌力、體態與漸進超負荷塑造線條，持續累積訓練量。', exercise:['每週 2–4 次全身阻力訓練，逐週增加重量、次數或控制時間。','搭配 2–3 次有氧與伸展，維持心肺和活動度。','每 4–6 週檢視重量、圍度與訓練表現，再調整計畫。'], diet:'維持均衡飲食，蛋白質平均分配到每餐；依增肌、維持或減脂目標使用上方熱量建議。'}
+        }; const plan = plans[shape] || plans['直筒型']; setText('recommend-badge', shape); setText('exercise-intro', plan.ex); setText('diet-intro', plan.diet); $('exercise-list').innerHTML = plan.exercise.map(item => `<li>${item}</li>`).join(''); $('diet-list').innerHTML = `<li>${plan.diet}</li><li>先執行 2–4 週，再依體重、腰圍與體脂率趨勢微調每日熱量。</li>`; renderAdviceChart(result, shape);
+      }
+      function renderChart() {
+        const wrap = $('chart-wrap'); const metric = $('chart-metric').value; const config = { bmi: ['BMI','#7c9cff','BMI'], weight: ['體重（kg）','#62d6a2','kg'], waist: ['腰圍（cm）','#f3c76c','cm'], bodyFat: ['體脂率（%）','#d98bff','%'] }[metric];
+        const data = [...history].filter(d => Number.isFinite(Number(d[metric]))).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)); $('chart-legend-label').textContent = config[0]; $('chart-dot').style.background = config[1];
+        if (data.length < 2) { wrap.innerHTML = `<div class="chart-empty">至少需要兩筆含有「${config[0]}」的測量紀錄，才會顯示趨勢。</div>`; return; }
+        const W=900,H=270,L=58,R=24,T=24,B=40,iw=W-L-R,ih=H-T-B, vals=data.map(d=>Number(d[metric])), rawMin=Math.min(...vals), rawMax=Math.max(...vals), pad=(rawMax-rawMin||1)*.18, min=rawMin-pad, max=rawMax+pad, x=i=>L+iw*i/(data.length-1), y=v=>T+ih-(v-min)/(max-min)*ih, points=vals.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' '), ticks=[0,.25,.5,.75,1].map(t=>{const yy=T+ih*t; const val=max-(max-min)*t; return `<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" stroke="var(--line)"/><text x="${L-9}" y="${yy+4}" text-anchor="end" fill="var(--muted)" font-size="11">${fmt(val,1)}</text>`}).join(''), dots=vals.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="5" fill="${config[1]}" stroke="var(--surface)" stroke-width="2"><title>${new Date(data[i].timestamp).toLocaleDateString('zh-TW')}｜${config[0]} ${fmt(v,1)}</title></circle>`).join(''), labels=data.map((d,i)=>`<text x="${x(i)}" y="${H-13}" text-anchor="middle" fill="var(--muted)" font-size="10">${new Date(d.timestamp).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'})}</text>`).join(''); wrap.innerHTML=`<svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${config[0]}歷史趨勢圖">${ticks}<polyline points="${points}" fill="none" stroke="${config[1]}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${labels}<text x="${L}" y="14" fill="var(--muted)" font-size="11">${config[0]}</text></svg>`;
+      }
+      function addHistory(result) { history.unshift({ ...result, id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, timestamp: new Date().toISOString() }); history = history.slice(0, 50); saveHistory(); renderHistory(); renderChart(); }
+      function renderHistory() {
+        const list = $('history-list'); const query = ($('history-search').value || '').trim().toLowerCase(); const sort = $('history-sort').value;
+        const filtered = history.filter((item) => `${item.timestamp} ${item.sex} ${item.heightCm} ${item.weight} ${item.bmi}`.toLowerCase().includes(query));
+        filtered.sort((a, b) => sort === 'oldest' ? new Date(a.timestamp) - new Date(b.timestamp) : sort === 'bmi-high' ? b.bmi - a.bmi : sort === 'bmi-low' ? a.bmi - b.bmi : new Date(b.timestamp) - new Date(a.timestamp));
+        renderChart(); setText('history-count', `${filtered.length}${filtered.length !== history.length ? ` / ${history.length}` : ''} 筆紀錄`); list.textContent = '';
+        setText('summary-bmi', history[0] ? fmt(history[0].bmi) : '—'); setText('summary-weight', history[0] ? `${fmt(history[0].weight)} kg` : '—');
+        const change = history.length > 1 ? history[0].bmi - history[history.length - 1].bmi : null; setText('summary-change', change === null ? '—' : `${change > 0 ? '+' : ''}${fmt(change)}`);
+        if (!filtered.length) { const empty = document.createElement('p'); empty.className = 'history-empty'; empty.textContent = history.length ? '找不到符合條件的紀錄。' : '尚無測量紀錄。完成一次計算後，紀錄會顯示在這裡。'; list.appendChild(empty); return; }
+        filtered.forEach((item) => { const row = document.createElement('article'); row.className = 'history-item'; const main = document.createElement('div'); main.className = 'history-main'; const date = document.createElement('div'); date.className = 'history-date'; date.textContent = new Date(item.timestamp).toLocaleString('zh-TW'); const metrics = document.createElement('div'); metrics.className = 'history-metrics'; metrics.innerHTML = `<span>BMI ${fmt(item.bmi)}</span><span>體脂 ${item.bodyFat === null ? '—' : `${fmt(item.bodyFat)}%`}</span><span>體重 ${fmt(item.weight)} kg</span>`; const meta = document.createElement('div'); meta.className = 'history-meta'; meta.textContent = `${item.heightCm} cm · ${item.age} 歲 · ${item.sex === 'male' ? '男性' : '女性'} · TDEE ${fmt(item.tdee, 0)} kcal`; main.append(date, metrics, meta); const actions = document.createElement('div'); actions.className = 'history-item-actions'; const load = document.createElement('button'); load.className = 'secondary'; load.type = 'button'; load.textContent = '載入'; load.addEventListener('click', () => loadRecord(item)); const del = document.createElement('button'); del.className = 'danger'; del.type = 'button'; del.textContent = '刪除'; del.addEventListener('click', () => { history = history.filter((entry) => entry.id !== item.id); saveHistory(); renderHistory(); renderChart(); }); actions.append(load, del); row.append(main, actions); list.appendChild(row); });
+      }
+      function loadRecord(item) { ['height','weight','age','waist','neck','hip','shoulder','leg-length'].forEach((id) => { $(id).value = item[id] ?? ''; }); $('sex').value = item.sex; $('activity').value = item.activity; $('macro-goal').value = item.goal || 'maintain'; renderCalculation(getCalculation()); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      function applyTheme(theme) { const dark = theme === 'dark'; document.body.classList.toggle('dark', dark); $('theme-toggle').textContent = dark ? '☀ 淺色' : '☾ 深色'; $('theme-toggle').setAttribute('aria-label', dark ? '切換淺色模式' : '切換深色模式'); $('theme-toggle').setAttribute('aria-pressed', String(dark)); }
+      let prefersDark = false; try { prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (_) {}
+      const savedTheme = readSetting(THEME_KEY); applyTheme(savedTheme === 'dark' ? 'dark' : 'light');
+      $('theme-toggle').addEventListener('click', () => { const theme = document.body.classList.contains('dark') ? 'light' : 'dark'; applyTheme(theme); writeSetting(THEME_KEY, theme); });
+      const postCalcSections = [...document.querySelectorAll('.post-calc')];
+      function setPostCalculationVisible(visible) { postCalcSections.forEach((section) => section.classList.toggle('hidden', !visible)); }
+      function beginNewMeasurement() {
+        setPostCalculationVisible(false); $('input-card').classList.remove('hidden'); $('input-status').textContent = '尚未計算'; $('new-measurement').classList.add('hidden'); form.reset();
+        ['height','weight','age','waist','neck','hip','shoulder','leg-length'].forEach((id) => { $(id).value = ''; });
+        $('sex').value = 'male'; $('activity').value = '1.55'; $('macro-goal').value = 'maintain';
+        setText('bmi','—'); setText('body-fat','—'); $('body-fat-result').classList.add('hidden'); setText('bmr','—'); setText('tdee','—'); setText('bmi-category','等待計算'); setText('healthy-range','輸入身高與體重後計算');
+        setText('body-fat-note','需要填寫腰圍、頸圍；女性另需臀圍'); $('input-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      function showCalculationResult() { const current = getCalculation(); setPostCalculationVisible(true); renderAnalysis(current); renderRecommendations(current); render30DayPlan(current); $('input-status').textContent = '已完成計算'; $('input-card').classList.add('hidden'); $('new-measurement').classList.remove('hidden'); $('result-card').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      form.addEventListener('submit', (event) => { event.preventDefault(); let stage = '身體資料'; try { const result = getCalculation(); if (result.error) { setText('error', result.error); return; } stage = '計算結果與身形分析'; if (renderCalculation(result)) { stage = '歷史紀錄儲存'; addHistory(result); stage = '結果頁面'; showCalculationResult(); } } catch (error) { const detail = error && error.message ? error.message : String(error); setText('error', `發生問題（${stage}）：${detail}`); console.error(`[${stage}]`, error); } });
+      $('new-measurement').addEventListener('click', beginNewMeasurement);
+      form.addEventListener('input', () => { if ($('height').value && $('weight').value && $('age').value) renderCalculation(getCalculation()); });
+      $('sex').addEventListener('change', () => { renderCalculation(getCalculation()); });
+      form.addEventListener('reset', () => { window.setTimeout(() => { ['bmi','body-fat','bmr','tdee'].forEach((id) => setText(id, '—')); setText('bmi-category', '等待計算'); setText('healthy-range', '輸入身高與體重後計算'); setText('body-fat-note', '需要填寫腰圍、頸圍；女性另需臀圍'); setText('error', '');  }, 0); });
+      $('clear-history').addEventListener('click', () => { if (!history.length) return; if (window.confirm('確定要清除全部測量紀錄嗎？此操作無法復原。')) { history = []; saveHistory(); renderHistory(); renderChart(); } });
+      $('history-search').addEventListener('input', renderHistory); $('plan-week').addEventListener('change', () => render30DayPlan(getCalculation())); $('history-sort').addEventListener('change', renderHistory); $('chart-metric').addEventListener('change', renderChart); $('macro-goal').addEventListener('change', () => { const result = getCalculation(); renderMacros(result); renderNutritionTracker(result); });
+      $('export-history').addEventListener('click', () => { if (!history.length) { window.alert('目前沒有可匯出的紀錄。'); return; } const rows = [['時間','身高(cm)','體重(kg)','年齡','性別','BMI','體脂率(%)','BMR(kcal)','TDEE(kcal)'], ...history.map((item) => [new Date(item.timestamp).toLocaleString('zh-TW'), item.heightCm, item.weight, item.age, item.sex === 'male' ? '男性' : '女性', item.bmi.toFixed(2), item.bodyFat === null ? '' : item.bodyFat.toFixed(2), item.bmr.toFixed(0), item.tdee.toFixed(0)])]; const csv = '\ufeff' + rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n'); const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); const link = document.createElement('a'); link.href = url; link.download = `bmi-history-${new Date().toISOString().slice(0,10)}.csv`; link.click(); URL.revokeObjectURL(url); });
+      setPostCalculationVisible(false); renderHistory(); renderCalculation(getCalculation()); renderAnalysis(getCalculation()); renderChart();
+    })();
+  </script>
+</body>
+</html>
